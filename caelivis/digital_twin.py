@@ -28,6 +28,27 @@ REGION_FIELDS = {
     ),
 }
 
+REGION_PREFERENCE_KEY = "digital_twin_region_preference"
+REGION_WIDGET_KEY = "digital_twin_region_widget"
+
+
+def _save_region_preference() -> None:
+    """Copy the transient radio-widget value to durable session state."""
+    st.session_state[REGION_PREFERENCE_KEY] = st.session_state[REGION_WIDGET_KEY]
+
+
+def _selected_region() -> str:
+    """Rehydrate the transient widget state from a non-widget state key."""
+    selected = st.session_state.get(REGION_PREFERENCE_KEY, "Chest")
+    if selected not in REGION_FIELDS:
+        selected = "Chest"
+        st.session_state[REGION_PREFERENCE_KEY] = selected
+    # Streamlit cleans up widget-owned keys when a conditional widget is absent.
+    # Initialize that short-lived key before the radio is instantiated.
+    if REGION_WIDGET_KEY not in st.session_state:
+        st.session_state[REGION_WIDGET_KEY] = selected
+    return selected
+
 
 def summarize_region(observations: pd.DataFrame, region: str, baseline_records: int = 7) -> list[dict]:
     """Return latest available field values and preceding-record medians."""
@@ -85,11 +106,15 @@ def render_digital_twin(observations: pd.DataFrame) -> None:
     st.markdown("Select a body region to inspect existing demonstration observations. The anatomical illustration is conceptual, not a scan, sensor feed, or medical model.")
     controls, figure, details = st.columns([.82, 1.05, 1.45], gap="large")
     with controls:
-        # Do not keep a user-managed session-state key for this conditional widget:
-        # Streamlit cleans up widget state while another page is displayed. The
-        # widget itself retains selections during this view's reruns and safely
-        # returns to the Chest default after navigating away and back.
-        region = st.radio("Select astronaut region", tuple(REGION_FIELDS), index=1, help="Keyboard-accessible region selector changes the illustration and associated observations.")
+        selected = _selected_region()
+        region = st.radio(
+            "Select astronaut region",
+            tuple(REGION_FIELDS),
+            index=tuple(REGION_FIELDS).index(selected),
+            key=REGION_WIDGET_KEY,
+            on_change=_save_region_preference,
+            help="Keyboard-accessible region selector changes the illustration and associated observations.",
+        )
         st.markdown('<div class="twin-status"><span class="twin-dot"></span>LOCAL DIGITAL-TWIN VIEW<br><small>No live sensors connected</small></div>', unsafe_allow_html=True)
     with figure:
         st.markdown(astronaut_svg(region), unsafe_allow_html=True)
