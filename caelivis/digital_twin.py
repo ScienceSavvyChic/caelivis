@@ -34,19 +34,17 @@ REGION_WIDGET_KEY = "digital_twin_region_widget"
 
 def _save_region_preference() -> None:
     """Copy the transient radio-widget value to durable session state."""
-    st.session_state[REGION_PREFERENCE_KEY] = st.session_state[REGION_WIDGET_KEY]
+    # Streamlit invokes on_change with the widget state available.
+    selected = st.session_state.get(REGION_WIDGET_KEY, "Chest")
+    st.session_state[REGION_PREFERENCE_KEY] = selected if selected in REGION_FIELDS else "Chest"
 
 
 def _selected_region() -> str:
-    """Rehydrate the transient widget state from a non-widget state key."""
+    """Get the persistent selection without touching transient widget state."""
     selected = st.session_state.get(REGION_PREFERENCE_KEY, "Chest")
     if selected not in REGION_FIELDS:
         selected = "Chest"
         st.session_state[REGION_PREFERENCE_KEY] = selected
-    # Streamlit cleans up widget-owned keys when a conditional widget is absent.
-    # Initialize that short-lived key before the radio is instantiated.
-    if REGION_WIDGET_KEY not in st.session_state:
-        st.session_state[REGION_WIDGET_KEY] = selected
     return selected
 
 
