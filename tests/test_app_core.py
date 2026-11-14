@@ -119,7 +119,7 @@ def test_trend_figure_valid_and_empty_data():
 
 # AppTest is optional for deployments using Streamlit releases without testing.v1.
 def test_streamlit_navigation_and_checkin_submission(tmp_path, monkeypatch):
-    streamlit = pytest.importorskip("streamlit")
+    pytest.importorskip("streamlit")
     try:
         from streamlit.testing.v1 import AppTest
     except ImportError:
@@ -135,7 +135,7 @@ def test_streamlit_navigation_and_checkin_submission(tmp_path, monkeypatch):
         assert any(page in title.value for title in app.title)
     radio.set_value("Daily Health Check-In").run()
     app.date_input(key="checkin_date").set_value("2024-02-29")
-    app.button(key="daily_checkin-Save check-in locally").click().run()
+    app.button(key="FormSubmitter:daily_checkin-Save check-in locally").click().run()
     saved, warnings = load_checkins_with_warnings()
     assert not warnings
     assert saved[-1]["date"] == "2024-02-29"
