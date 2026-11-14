@@ -72,7 +72,8 @@ def _sparkline(data: pd.DataFrame, column: str, label: str, color: str, unit: st
         return None
     source_text = frame["data_source"].map(_source_name) if "data_source" in frame else None
     fig = go.Figure(go.Scatter(x=frame["date"], y=frame[column], mode="lines+markers", name=label, line={"color": color, "width": 2.5}, marker={"size": 5, "color": color}, text=source_text, hovertemplate="%{x|%b %d}<br>%{y} " + unit + "<br>%{text}<extra></extra>"))
-    fig.update_layout(**PLOT_LAYOUT, height=180, showlegend=False, yaxis_title=unit)
+    layout = {**PLOT_LAYOUT, "height": 180, "showlegend": False, "yaxis_title": unit}
+    fig.update_layout(**layout)
     return fig
 
 
@@ -191,7 +192,8 @@ def build_trend_figure(observations: pd.DataFrame, column: str, label: str, unit
     chart = go.Figure(go.Scatter(x=valid["date"], y=valid[column], mode="lines+markers", name=label, line={"color": "#48DDF0", "width": 3}, marker={"size": 7, "color": "#A9DFF5"}, text=sources, hovertemplate="%{x|%b %d, %Y}<br>%{y} " + unit + "<br>%{text}<extra></extra>"))
     if baseline is not None:
         chart.add_hline(y=baseline, line_dash="dash", line_color="#FFC878", annotation_text="Personal reference median")
-    chart.update_layout(**PLOT_LAYOUT, height=390, showlegend=False, yaxis_title=unit, xaxis_title="Observation date", hoverlabel={"bgcolor": "#122B43", "font": {"color": "#F3F7FB"}})
+    layout = {**PLOT_LAYOUT, "height": 390, "showlegend": False, "yaxis_title": unit, "xaxis_title": "Observation date", "hoverlabel": {"bgcolor": "#122B43", "font": {"color": "#F3F7FB"}}}
+    chart.update_layout(**layout)
     chart.update_xaxes(showgrid=False)
     return chart
 
