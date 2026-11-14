@@ -128,7 +128,6 @@ def test_streamlit_navigation_and_checkin_submission(tmp_path, monkeypatch):
     app_path = __import__("pathlib").Path(__file__).resolve().parents[1] / "app.py"
     app = AppTest.from_file(str(app_path), default_timeout=20).run()
     assert not app.exception
-    radio = app.sidebar.radio[0]
     expected_headings = {
         "Mission Health Overview": "Crew Health Overview",
         "Daily Health Check-In": "Daily Health Check-In",
@@ -137,11 +136,11 @@ def test_streamlit_navigation_and_checkin_submission(tmp_path, monkeypatch):
         "Privacy & Communications": "Privacy & Communications",
     }
     for page, heading in expected_headings.items():
-        radio.set_value(page).run()
+        app.sidebar.radio[0].set_value(page).run()
         assert not app.exception
         # _header renders each page's visible main heading with st.title().
         assert any(title.value == heading for title in app.title), f"Expected visible heading {heading!r} for navigation page {page!r}"
-    radio.set_value("Daily Health Check-In").run()
+    app.sidebar.radio[0].set_value("Daily Health Check-In").run()
     app.date_input(key="checkin_date").set_value("2024-02-29")
     app.button(key="FormSubmitter:daily_checkin-Save check-in locally").click().run()
     saved, warnings = load_checkins_with_warnings()
@@ -161,3 +160,29 @@ def test_trends_section_renders_plotly_chart(tmp_path, monkeypatch):
     app.sidebar.radio[0].set_value("Personal Baseline & Trends").run()
     assert not app.exception
     assert len(app.get("plotly_chart")) == 1
+
+
+def test_digital_twin_regions_survive_navigation(tmp_path, monkeypatch):
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    monkeypatch.setenv("CAELIVIS_DATA_DIR", str(tmp_path))
+    app_path = __import__("pathlib").Path(__file__).resolve().parents[1] / "app.py"
+    app = AppTest.from_file(str(app_path), default_timeout=20).run()
+
+    assert not app.exception
+
+    for region in ("Head", "Chest", "Body"):
+        app.radio[0].set_value(region).run()
+
+        assert not app.exception
+        assert app.radio[0].value == region
+        assert app.session_state["digital_twin_region_preference"] == region
+
+        app.sidebar.radio[0].set_value("Daily Health Check-In").run()
+        assert not app.exception
+
+        app.sidebar.radio[0].set_value("Mission Health Overview").run()
+        assert not app.exception
+        assert app.radio[0].value == region
+        assert app.session_state["digital_twin_region_preference"] == region
