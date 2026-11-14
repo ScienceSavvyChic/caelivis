@@ -129,10 +129,18 @@ def test_streamlit_navigation_and_checkin_submission(tmp_path, monkeypatch):
     app = AppTest.from_file(str(app_path), default_timeout=20).run()
     assert not app.exception
     radio = app.sidebar.radio[0]
-    for page in ["Mission Health Overview", "Daily Health Check-In", "Personal Baseline & Trends", "Health Insights & Alerts", "Privacy & Communications"]:
+    expected_headings = {
+        "Mission Health Overview": "Crew Health Overview",
+        "Daily Health Check-In": "Daily Health Check-In",
+        "Personal Baseline & Trends": "Personal Baseline & Trends",
+        "Health Insights & Alerts": "Health Insights & Alerts",
+        "Privacy & Communications": "Privacy & Communications",
+    }
+    for page, heading in expected_headings.items():
         radio.set_value(page).run()
         assert not app.exception
-        assert any(page in title.value for title in app.title)
+        # _header renders each page's visible main heading with st.title().
+        assert any(title.value == heading for title in app.title), f"Expected visible heading {heading!r} for navigation page {page!r}"
     radio.set_value("Daily Health Check-In").run()
     app.date_input(key="checkin_date").set_value("2024-02-29")
     app.button(key="FormSubmitter:daily_checkin-Save check-in locally").click().run()
