@@ -1,12 +1,17 @@
+
 name: CAELIVIS tests
 
 on:
   push:
     branches:
-      - 'copilot/caelivis-streamlit-prototype'
+      - main
+      - copilot/caelivis-streamlit-prototype
   pull_request:
     branches:
-      - 'copilot/caelivis-streamlit-prototype'
+      - main
+      - copilot/caelivis-streamlit-prototype
+  workflow_dispatch:
+
 
 permissions:
   contents: read
