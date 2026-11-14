@@ -85,7 +85,12 @@ def render_digital_twin(observations: pd.DataFrame) -> None:
     st.markdown("Select a body region to inspect existing demonstration observations. The anatomical illustration is conceptual, not a scan, sensor feed, or medical model.")
     controls, figure, details = st.columns([.82, 1.05, 1.45], gap="large")
     with controls:
-        region = st.radio("Select astronaut region", tuple(REGION_FIELDS), index=1, key="digital_twin_region", help="Keyboard-accessible region selector changes the illustration and associated observations.")
+        # Streamlit discards widget-owned state when its widget is not rendered
+        # (for example, while navigating to another section). Initialize a fresh
+        # default before creating the radio again when returning to this view.
+        if "digital_twin_region" not in st.session_state:
+            st.session_state["digital_twin_region"] = "Chest"
+        region = st.radio("Select astronaut region", tuple(REGION_FIELDS), key="digital_twin_region", help="Keyboard-accessible region selector changes the illustration and associated observations.")
         st.markdown('<div class="twin-status"><span class="twin-dot"></span>LOCAL DIGITAL-TWIN VIEW<br><small>No live sensors connected</small></div>', unsafe_allow_html=True)
     with figure:
         st.markdown(astronaut_svg(region), unsafe_allow_html=True)
