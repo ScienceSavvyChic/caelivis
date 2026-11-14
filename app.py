@@ -5,6 +5,7 @@ from pathlib import Path
 import streamlit as st
 
 from caelivis.data import load_observations
+from caelivis.digital_twin import render_digital_twin
 from caelivis.insights import build_insights
 from caelivis.storage import load_checkins_with_warnings, load_outbox_with_warnings, mark_outbox_delivered, queue_latest_summary
 from caelivis.views import render_checkin, render_hazards, render_overview, render_privacy, render_trends
@@ -30,7 +31,7 @@ p, label, [data-testid="stMarkdownContainer"] { color:#d5e0e9; }
 [data-testid="stMetricLabel"] { color:#91A8BA; font:500 .74rem 'DM Mono',monospace; letter-spacing:.05em; }
 [data-testid="stMetricValue"] { color:#F3F7FB; font-family:Manrope,system-ui,sans-serif; font-weight:750; }
 div[data-testid="stForm"] { background:rgba(11,31,53,.56); padding:1.25rem; border:1px solid #294963; border-radius:18px; }
-div[data-testid="stForm"] [data-testid="stVerticalBlockBorderWrapper"] { background:linear-gradient(145deg,rgba(18,43,67,.88),rgba(11,31,53,.7)); border-color:#294963!important; border-radius:15px; padding:.7rem; }
+div[data-testid="stForm"] [data-testid="stVerticalBlockBorderWrapper"] { background:linear-gradient(145deg,rgba(18,43,67,.88),rgba(11,31,53,.7)); border-color:#294963!important; border-radius:15px!important; padding:.7rem; }
 [data-testid="stVerticalBlockBorderWrapper"] { border-color:#294963!important; border-radius:15px!important; }
 .stAlert { border-radius:12px; }
 .stButton button[kind="primary"] { background:linear-gradient(90deg,#087e9d,#19a9bb); border:1px solid #48DDF0; color:white; border-radius:10px; font-weight:700; }
@@ -61,13 +62,29 @@ a { color:#48DDF0!important; }
 .hazard-kicker { display:flex; align-items:center; gap:.7rem; color:#91A8BA; font:500 .66rem 'DM Mono',monospace; letter-spacing:.12em; }
 .hazard-icon { color:#48DDF0; font-size:1.3rem; }
 .outbox-status { text-align:center; border:1px solid #d59b48; border-radius:9px; color:#FFD58C; background:rgba(91,62,20,.25); padding:.65rem; font:500 .72rem 'DM Mono',monospace; margin-top:.5rem; }
+.twin-shell { border:1px solid #2c536b; border-radius:18px; padding:.4rem .5rem .7rem; background:radial-gradient(ellipse at 50% 40%,rgba(30,99,131,.32),rgba(7,21,37,.9) 72%); box-shadow:inset 0 0 35px rgba(72,221,240,.05),0 15px 40px rgba(0,0,0,.25); }
+.astronaut-twin { width:100%; height:auto; max-height:610px; display:block; }
+.twin-svg-label { fill:#91A8BA; font:9px system-ui,sans-serif; letter-spacing:1.2px; }
+.twin-source-note { text-align:center; color:#91A8BA; font: .62rem system-ui,sans-serif; letter-spacing:.08em; }
+.region-head,.region-chest,.region-body { opacity:.15; transition:opacity .2s ease; }
+.region-head.active,.region-chest.active,.region-body.active { opacity:.95; filter:url(#glow); }
+.twin-reading { color:#F3F7FB; font:800 1.45rem system-ui,sans-serif; }
+.twin-reading span { font:500 .78rem system-ui,sans-serif; color:#A9DFF5; }
+.twin-status { border:1px solid #2a5366; background:rgba(10,44,57,.58); border-radius:10px; padding:.7rem; color:#A9DFF5; font:.68rem system-ui,sans-serif; }
+.twin-dot { display:inline-block; width:8px; height:8px; margin-right:.4rem; border-radius:50%; background:#79D9B3; }
+.hud-panel { display:flex; flex-direction:column; gap:.8rem; padding:1rem; border:1px solid #48DDF0; border-radius:14px; background:linear-gradient(145deg,rgba(14,48,70,.85),rgba(7,21,37,.95)); box-shadow:inset 0 0 25px rgba(72,221,240,.08); color:#A9DFF5; font:500 .67rem system-ui,sans-serif; }
+.hud-panel b { color:#48DDF0; letter-spacing:.1em; }
+.hud-panel div { display:flex; justify-content:space-between; gap:.5rem; border-bottom:1px solid rgba(145,168,186,.2); padding-bottom:.45rem; }
+.hud-panel strong { color:#F3F7FB; }
+.hud-panel small { font-size:.58rem; letter-spacing:.06em; }
 @media (max-width: 760px) { .block-container {padding-left:1rem;padding-right:1rem;} .mission-art-caption {font-size:.55rem;} .vital-card {min-height:130px;} }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
 </style>
 """, unsafe_allow_html=True)
 
 PAGES = ["Mission Health Overview", "Daily Health Check-In", "Personal Baseline & Trends", "Health Insights & Alerts", "Privacy & Communications"]
 with st.sidebar:
-    st.markdown('<div style="font:800 1.45rem Manrope,sans-serif;color:#F3F7FB;letter-spacing:.1em">CAELI<span style="color:#48DDF0">VIS</span></div><div style="font:500 .61rem DM Mono,monospace;color:#A9DFF5;letter-spacing:.12em;margin:.2rem 0 1rem">CREW HEALTH INTELLIGENCE<br>DEEP SPACE RESEARCH</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font:800 1.45rem system-ui,sans-serif;color:#F3F7FB;letter-spacing:.1em">CAELI<span style="color:#48DDF0">VIS</span></div><div style="font:500 .61rem ui-monospace,monospace;color:#A9DFF5;letter-spacing:.12em;margin:.2rem 0 1rem">CREW HEALTH INTELLIGENCE<br>DEEP SPACE RESEARCH</div>', unsafe_allow_html=True)
     st.caption("NON-DIAGNOSTIC RESEARCH PROTOTYPE")
     page = st.radio("Mission console sections", PAGES, label_visibility="collapsed", key="navigation")
     st.divider()
@@ -84,6 +101,7 @@ observations = load_observations(ROOT / "data" / "synthetic_health.csv", checkin
 insights = build_insights(observations)
 
 if page == PAGES[0]:
+    render_digital_twin(observations)
     render_overview(observations, insights)
 elif page == PAGES[1]:
     render_checkin()

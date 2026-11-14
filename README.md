@@ -6,17 +6,21 @@ CAELIVIS is an offline-first, non-diagnostic research prototype for exploring as
 
 > **Safety and provenance:** All records are demonstration data, never actual astronaut telemetry. Bundled records are synthetic; check-in entries are crew-entered demonstration records. Use demonstration values only. Local JSON is not encrypted or access-controlled. No health information is transmitted.
 
-## Interface and features
+## Interactive astronaut digital twin
 
-The interface uses a dark aerospace palette, native Streamlit theme configuration, accessible original SVG mission-route and communications diagrams, responsive metric cards, and interactive Plotly trend charts. No external images or additional Python dependencies are required. The mission route, Earth/Mars symbols, and spacecraft illustrations are conceptual originals—not to scale, mission navigation, NASA imagery, or an endorsement.
+The Mission Health Overview now includes an original, locally rendered SVG spacesuit silhouette and a keyboard-accessible Head / Chest / Body selector. Selecting a region highlights that area and displays the newest available observations, units, recorded date/timestamp, provenance, and a recent-record median where available. Available fields are the existing CAELIVIS schema only: cognitive wellbeing, mood, stress, sleep and fatigue; heart rate and blood pressure; temperature, exercise, and optional glucose. This is a conceptual data explorer, not a scan, physiological model, connected sensor, or real astronaut digital twin.
+
+The expandable Signals & HUD panel displays actual stored heart-rate observations when present. Its ECG-style trace is illustrative only because no ECG signal is collected. The suit HUD preview is a static design concept, not hardware integration. All core artwork is inline SVG/CSS; it does not fetch remote images or require a rendering service. (A previously existing remote font import in the app styling is decorative only; system font fallbacks remain available offline.)
+
+## Existing functionality
 
 - Five Streamlit sections: Mission Health Overview, Daily Health Check-In, Personal Baseline & Trends, Health Insights & Alerts, and Privacy & Communications.
-- Clearly identified **Synthetic demonstration data** and **Crew-entered demonstration data** throughout overview and trends.
-- Daily check-in with user-selected observation date, unit labels, data-entry bounds, and a blood-pressure consistency check. Bounds are not medical limits.
-- Interactive Plotly charts with personal-median comparison and provenance in hover text. Display cues are not validated clinical thresholds.
-- Educational discussion of NASA's five human-spaceflight hazards, including data limitations, safe follow-up language, and source links.
-- Local JSON storage validation that surfaces warnings, isolates invalid records, and preserves original malformed records rather than silently replacing them.
-- Local outbox showing observation timestamp, queue time, fixed 20-minute-14-second one-way delay, calculated simulated arrival, and **Queued — Not Transmitted** state. No actual communication is implemented.
+- Clearly identified **Synthetic demonstration data** and **Crew-entered demonstration data**.
+- Daily check-in with selected observation date, units, entry guardrails, and blood-pressure consistency check. Guardrails are not medical limits.
+- Interactive Plotly trend charts and configurable personal-median comparisons. These are descriptive, not validated clinical thresholds.
+- Educational discussion of NASA's five human-spaceflight hazards with limitations, appropriate follow-up, and source links.
+- Local JSON storage validation with visible warnings and non-destructive handling of malformed records.
+- Local outbox with observation/queue times, fixed 20-minute-14-second one-way delay and calculated simulated arrival. Queue status remains **Queued — Not Transmitted**; there is no real communications path.
 
 ## Installation and launch
 
@@ -32,7 +36,7 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Streamlit prints the local URL (usually `http://localhost:8501`). No API keys, credentials, or external services are needed. After dependencies are installed, the included sample data can be loaded locally.
+Streamlit prints the local URL (usually `http://localhost:8501`). No API keys, credentials, or cloud services are required. The digital twin graphics and controls run locally.
 
 By default, check-ins and outbox records are stored in `data/local/`. To select another directory, set `CAELIVIS_DATA_DIR` before starting:
 
@@ -45,12 +49,11 @@ $env:CAELIVIS_DATA_DIR = "$HOME\\caelivis-local"; streamlit run app.py
 
 ## Demo walkthrough
 
-1. Start the app and explore the five pages from the sidebar.
-2. On Mission Health Overview, review the conceptual Earth-to-Mars route, mission status, sample trend cards, and provenance counts.
-3. In Daily Health Check-In, select a past date and enter illustrative values. Save to persist a crew-entered demonstration record locally.
-4. Open Personal Baseline & Trends to inspect interactive chart tooltips and data-source counts. Differences are descriptive, not clinical alerts.
-5. Review the hazard cards and NASA references on Health Insights & Alerts.
-6. In Privacy & Communications, queue a local summary and inspect observation time, queue time, 20:14 delay, expected arrival, and not-transmitted status. No message is sent.
+1. Start the app and explore five sections from the sidebar.
+2. In Mission Health Overview, select Head, Chest, or Body beside the suit illustration. Review recorded values, source/date, and personal median. Expand Signals & HUD to inspect the recorded heart-rate context and explicitly illustrative ECG-style graphic.
+3. In Daily Health Check-In, choose a historical date, add demonstration observations, and save locally.
+4. Explore interactive trends and provenance in Personal Baseline & Trends; inspect the hazard cards and NASA references in Health Insights & Alerts.
+5. Queue a local summary in Privacy & Communications and inspect the simulated 20:14 arrival details. No message is sent.
 
 ## Testing
 
@@ -58,27 +61,27 @@ $env:CAELIVIS_DATA_DIR = "$HOME\\caelivis-local"; streamlit run app.py
 python -m pytest -q
 ```
 
-Tests cover synthetic-data labeling, comparison behavior, historical observation dates, malformed and invalid local records, non-destructive storage, chart construction for valid/empty data, delay arithmetic, outbox persistence, and (where supported by Streamlit) AppTest navigation and form flow.
+Tests cover synthetic labeling, baseline logic, date persistence, malformed local data, outbox timing, trend figures, navigation, and check-in flow. The UI test suite does not replace browser/manual layout and accessibility testing.
 
-## Synthetic data, references, and safety boundaries
+## Data, sources, and scientific limitations
 
-`data/synthetic_health.csv` contains invented sample data for interface demonstration. It is not from astronauts, a human-subjects study, or a clinical source. Hazard content is educational and references:
+`data/synthetic_health.csv` contains invented examples. It is not astronaut telemetry, a human-subjects dataset, or clinical source data. Hazard descriptions reference NASA resources:
 
 - NASA Human Research Program: https://www.nasa.gov/hrp/
 - NASA Human Research Roadmap: https://humanresearchroadmap.nasa.gov/
 
-There is no radiation dosimeter, cabin-environment telemetry, validated behavioral-health instrument, authentication, encryption, or clinician workflow. Check-ins are simple self-reports. Comparison thresholds are user-configurable display choices, not medical rules. Mission elapsed time and the 20:14 delay are static simulation values, not live mission calculations. For medical concerns, follow mission protocols and qualified medical oversight.
+There is no radiation dosimeter, ECG, cabin-environment telemetry, validated behavioral-health instrument, authentication, encryption, or clinician workflow. Check-ins are simple self-reports. Comparisons are descriptive and not medical thresholds; the app does not diagnose, triage, prescribe or recommend treatment. Mission elapsed time and communications delay are static simulation values. For health concerns, follow mission protocols and qualified medical oversight.
 
 ## Project layout
 
 ```text
-app.py                       Streamlit entry point, navigation, global styling
-.streamlit/config.toml       Native Streamlit theme configuration
-caelivis/data.py             Synthetic and local observation handling
+app.py                       Streamlit entry point and five-section navigation
+caelivis/data.py             Synthetic and local observation loading
+caelivis/digital_twin.py     Offline SVG astronaut and regional observation explorer
 caelivis/insights.py         Descriptive personal-baseline comparisons
 caelivis/storage.py          Validated local JSON and simulated outbox
-caelivis/views.py            Five-section UI, original inline SVG, Plotly charts
-data/synthetic_health.csv   Clearly labeled synthetic demonstration records
-tests/test_app_core.py       Core, storage, chart, and optional AppTest coverage
-requirements.txt             Runtime and test dependencies
+caelivis/views.py            Five-section views, hazard and trend displays
+data/synthetic_health.csv   Clearly labeled synthetic demo data
+tests/test_app_core.py       Core and AppTest coverage
+requirements.txt             Existing runtime/test dependencies
 ```
