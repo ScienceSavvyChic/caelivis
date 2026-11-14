@@ -34,13 +34,18 @@ REGION_WIDGET_KEY = "digital_twin_region_widget"
 
 def _save_region_preference() -> None:
     """Copy the transient radio-widget value to durable session state."""
-    # Streamlit invokes on_change with the widget state available.
-    selected = st.session_state.get(REGION_WIDGET_KEY, "Chest")
-    st.session_state[REGION_PREFERENCE_KEY] = selected if selected in REGION_FIELDS else "Chest"
+    try:
+        selected = st.session_state[REGION_WIDGET_KEY]
+    except KeyError:
+        # If navigation cleanup removes the widget before callback execution,
+        # leave the last persisted choice intact.
+        return
+    if selected in REGION_FIELDS:
+        st.session_state[REGION_PREFERENCE_KEY] = selected
 
 
 def _selected_region() -> str:
-    """Get the persistent selection without touching transient widget state."""
+    """Return a validated region stored independently from widget state."""
     selected = st.session_state.get(REGION_PREFERENCE_KEY, "Chest")
     if selected not in REGION_FIELDS:
         selected = "Chest"
@@ -105,14 +110,21 @@ def render_digital_twin(observations: pd.DataFrame) -> None:
     controls, figure, details = st.columns([.82, 1.05, 1.45], gap="large")
     with controls:
         selected = _selected_region()
+        # Rehydrate the widget-owned key from persistent state before rendering
+        # it again. The key must be assigned before st.radio is called.
+        if REGION_WIDGET_KEY not in st.session_state:
+            st.session_state[REGION_WIDGET_KEY] = selected
         region = st.radio(
             "Select astronaut region",
             tuple(REGION_FIELDS),
-            index=tuple(REGION_FIELDS).index(selected),
             key=REGION_WIDGET_KEY,
             on_change=_save_region_preference,
             help="Keyboard-accessible region selector changes the illustration and associated observations.",
         )
+        # Persist the selected value on every render too, covering reruns where
+        # the widget is changed programmatically by AppTest or a browser event.
+        if region in REGION_FIELDS:
+            st.session_state[REGION_PREFERENCE_KEY] = region
         st.markdown('<div class="twin-status"><span class="twin-dot"></span>LOCAL DIGITAL-TWIN VIEW<br><small>No live sensors connected</small></div>', unsafe_allow_html=True)
     with figure:
         st.markdown(astronaut_svg(region), unsafe_allow_html=True)
