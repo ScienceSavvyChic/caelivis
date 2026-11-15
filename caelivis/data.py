@@ -59,3 +59,70 @@ def load_observations(sample_path: Path, checkins: list[dict]) -> pd.DataFrame:
         frame = pd.concat([frame, local], ignore_index=True, sort=False)
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
     return frame.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+
+
+NASA_CBC_METRICS = {
+    "Absolute basophils": ("absolute_basophils_value_cells_per_microliter", "cells/µL"),
+    "Absolute eosinophils": ("absolute_eosinophils_value_cells_per_microliter", "cells/µL"),
+    "Absolute lymphocytes": ("absolute_lymphocytes_value_cells_per_microliter", "cells/µL"),
+    "Absolute monocytes": ("absolute_monocytes_value_cells_per_microliter", "cells/µL"),
+    "Absolute neutrophils": ("absolute_neutrophils_value_cells_per_microliter", "cells/µL"),
+    "Basophils": ("basophils_value_percent", "%"),
+    "Eosinophils": ("eosinophils_value_percent", "%"),
+    "Hematocrit": ("hematocrit_value_percent", "%"),
+    "Lymphocytes": ("lymphocytes_value_percent", "%"),
+    "Mean corpuscular hemoglobin": ("mch_value_picogram", "pg"),
+    "Mean corpuscular hemoglobin concentration": ("mchc_value_grams_per_deciliter", "g/dL"),
+    "Mean corpuscular volume": ("mcv_value_femtoliter", "fL"),
+    "Monocytes": ("monocytes_value_percent", "%"),
+    "Mean platelet volume": ("mpv_value_femtoliter", "fL"),
+    "Neutrophils": ("neutrophils_value_percent", "%"),
+    "Platelet count": ("platelet_count_value_thousand_per_microliter", "thousand/µL"),
+    "Red cell distribution width": ("rdw_value_percent", "%"),
+    "Red blood cell count": ("red_blood_cell_count_value_million_per_microliter", "million/µL"),
+    "White blood cell count": ("white_blood_cell_count_value_thousand_per_microliter", "thousand/µL"),
+}
+
+NASA_CBC_TIMEPOINT_ORDER = {
+    "L-92": 0,
+    "L-44": 1,
+    "L-3": 2,
+    "R+1": 3,
+    "R+45": 4,
+    "R+82": 5,
+    "R+194": 6,
+}
+
+
+def load_nasa_cbc(path: Path) -> pd.DataFrame:
+    """Load and validate the public NASA OSD-569 transformed CBC dataset."""
+    path = Path(path)
+    if not path.is_file():
+        raise FileNotFoundError(f"NASA CBC dataset not found: {path}")
+
+    frame = pd.read_csv(path)
+    required = {"Sample Name", *[column for column, _ in NASA_CBC_METRICS.values()]}
+    missing = required.difference(frame.columns)
+    if missing:
+        raise ValueError(f"NASA CBC dataset is missing required columns: {sorted(missing)}")
+
+    identifiers = frame["Sample Name"].astype(str).str.extract(
+        r"^(C\d+)_whole-blood_(L-\d+|R\+\d+)_cbc$"
+    )
+    if identifiers.isna().any(axis=None):
+        raise ValueError("NASA CBC dataset contains an unrecognized sample identifier.")
+
+    frame = frame.copy()
+    frame["participant_id"] = identifiers[0]
+    frame["timepoint"] = identifiers[1]
+    frame["timepoint_order"] = frame["timepoint"].map(NASA_CBC_TIMEPOINT_ORDER)
+
+    if frame["timepoint_order"].isna().any():
+        raise ValueError("NASA CBC dataset contains an undocumented collection timepoint.")
+
+    for column, _unit in NASA_CBC_METRICS.values():
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+
+    return frame.sort_values(
+        ["participant_id", "timepoint_order"]
+    ).reset_index(drop=True)

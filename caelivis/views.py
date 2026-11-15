@@ -302,3 +302,154 @@ def render_privacy(observations: pd.DataFrame, outbox: list[dict], on_queue, on_
                         st.error("Could not update the simulated local status.")
                     else:
                         st.rerun()
+
+
+def render_nasa_research_explorer(dataset_path) -> None:
+    """Explore historical NASA Inspiration4 CBC research measurements."""
+    from caelivis.data import NASA_CBC_METRICS, NASA_CBC_TIMEPOINT_ORDER, load_nasa_cbc
+
+    _header(
+        "NASA OPEN RESEARCH DATA / INSPIRATION4",
+        "NASA Research Data Explorer",
+        "Explore historical complete blood count measurements from the Inspiration4 research study.",
+    )
+
+    st.warning(
+        "HISTORICAL RESEARCH DATA · These are NASA OSDR study samples collected "
+        "at documented ground timepoints before and after flight. They are not "
+        "live spacecraft telemetry, continuous in-flight measurements, or a "
+        "medical assessment."
+    )
+
+    try:
+        data = load_nasa_cbc(dataset_path)
+    except (OSError, ValueError, pd.errors.ParserError) as exc:
+        st.error(f"The NASA research dataset could not be loaded: {exc}")
+        return
+
+    participants = sorted(data["participant_id"].unique())
+    if not participants:
+        st.warning("No participant records are available in this dataset.")
+        return
+
+    st.markdown(
+        '<div class="section-label">SOURCE DATASET · NASA OSDR OSD-569</div>',
+        unsafe_allow_html=True,
+    )
+    metric_columns = st.columns(3)
+    metric_columns[0].metric("Sample records", len(data))
+    metric_columns[1].metric("Coded participants", len(participants))
+    metric_columns[2].metric("Collection timepoints", data["timepoint"].nunique())
+
+    st.markdown("### Explore a CBC measurement")
+    controls = st.columns([1, 1])
+    with controls[0]:
+        participant = st.selectbox(
+            "Coded participant",
+            participants,
+            key="nasa_cbc_participant",
+        )
+    with controls[1]:
+        metric_name = st.selectbox(
+            "CBC measurement",
+            list(NASA_CBC_METRICS),
+            index=list(NASA_CBC_METRICS).index("White blood cell count"),
+            key="nasa_cbc_metric",
+        )
+
+    column, unit = NASA_CBC_METRICS[metric_name]
+    selected = data.loc[data["participant_id"] == participant].copy()
+    selected = selected.sort_values("timepoint_order")
+    selected = selected.dropna(subset=[column])
+
+    if selected.empty:
+        st.info("No valid measurements are available for this selection.")
+        return
+
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=selected["timepoint"],
+            y=selected[column],
+            mode="lines+markers",
+            name=metric_name,
+            line={"color": "#48DDF0", "width": 3},
+            marker={"size": 10, "color": "#A9DFF5"},
+            customdata=selected[["Sample Name"]],
+            hovertemplate=(
+                "Timepoint: %{x}<br>"
+                + metric_name
+                + ": %{y} "
+                + unit
+                + "<br>Sample: %{customdata[0]}"
+                + "<extra></extra>"
+            ),
+        )
+    )
+    figure.update_layout(
+        **{
+            **PLOT_LAYOUT,
+            "height": 390,
+            "showlegend": False,
+            "yaxis_title": f"{metric_name} ({unit})",
+            "xaxis_title": "Documented collection timepoint",
+            "hoverlabel": {
+                "bgcolor": "#122B43",
+                "font": {"color": "#F3F7FB"},
+            },
+        }
+    )
+    figure.update_xaxes(
+        categoryorder="array",
+        categoryarray=list(NASA_CBC_TIMEPOINT_ORDER),
+    )
+
+    st.plotly_chart(
+        figure,
+        use_container_width=True,
+        config={"displaylogo": False},
+        key="nasa-cbc-research-chart",
+    )
+
+    st.markdown("### Underlying sample records")
+    display = selected[["participant_id", "timepoint", "Sample Name", column]].copy()
+    display = display.rename(
+        columns={
+            "participant_id": "Coded participant",
+            "timepoint": "Collection timepoint",
+            "Sample Name": "NASA sample identifier",
+            column: f"{metric_name} ({unit})",
+        }
+    )
+    st.dataframe(display, hide_index=True, use_container_width=True)
+
+    st.caption(
+        "Timepoint key: L = before launch; R = after return. "
+        "The samples are documented ground collection timepoints, not "
+        "continuous measurements during flight."
+    )
+
+    st.markdown('<div class="section-label">DATA PROVENANCE & LIMITATIONS</div>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        **Study:** Whole Blood Measurements from the SpaceX Inspiration4 Mission
+
+        **NASA OSDR accession:** OSD-569
+
+        **Dataset file:** `LSDS-7_Complete_Blood_Count_CBC_TRANSFORMED.csv`
+
+        **Collection context:** Four coded participants; pre-flight and post-flight
+        blood collection timepoints. The study describes a three-day low-Earth-orbit
+        mission in September 2021.
+
+        **Source:** [NASA Open Science Data Repository — OSD-569](https://osdr.nasa.gov/bio/repo/data/studies/OSD-569)
+
+        **Dataset DOI:** [10.26030/e0rx-sh52](https://doi.org/10.26030/e0rx-sh52)
+        """
+    )
+    st.info(
+        "Research-use demonstration only. The chart displays the source dataset's "
+        "reported measurements; it does not diagnose, predict, establish causation, "
+        "or determine an individual's health status. The dataset's reference "
+        "interval columns are not used as clinical decision thresholds here."
+    )

@@ -8,7 +8,7 @@ from caelivis.data import load_observations
 from caelivis.digital_twin import render_digital_twin
 from caelivis.insights import build_insights
 from caelivis.storage import load_checkins, load_outbox, queue_latest_summary, mark_outbox_delivered
-from caelivis.views import render_checkin, render_hazards, render_overview, render_privacy, render_trends
+from caelivis.views import render_checkin, render_hazards, render_overview, render_privacy, render_trends, render_nasa_research_explorer
 
 ROOT = Path(__file__).resolve().parent
 st.set_page_config(page_title="CAELIVIS | Crew Health Intelligence", page_icon="🛰️", layout="wide", initial_sidebar_state="expanded")
@@ -52,7 +52,7 @@ a { color:#48DDF0!important; }
 </style>
 """, unsafe_allow_html=True)
 
-PAGES = ["Mission Health Overview", "Daily Health Check-In", "Personal Baseline & Trends", "Health Insights & Alerts", "Privacy & Communications"]
+PAGES = ["Mission Health Overview", "Daily Health Check-In", "Personal Baseline & Trends", "Health Insights & Alerts", "NASA Research Data Explorer", "Privacy & Communications"]
 with st.sidebar:
     st.markdown('<div style="font:800 1.45rem system-ui,sans-serif;color:#F3F7FB;letter-spacing:.1em">CAELI<span style="color:#48DDF0">VIS</span></div><div style="font:500 .61rem ui-monospace,monospace;color:#A9DFF5;letter-spacing:.12em;margin:.2rem 0 1rem">CREW HEALTH INTELLIGENCE<br>DEEP SPACE RESEARCH</div>', unsafe_allow_html=True)
     st.caption("NON-DIAGNOSTIC RESEARCH PROTOTYPE")
@@ -75,5 +75,7 @@ elif page == PAGES[2]:
     render_trends(observations)
 elif page == PAGES[3]:
     render_hazards(observations, insights)
+elif page == PAGES[4]:
+    render_nasa_research_explorer(ROOT / "data" / "nasa" / "LSDS-7_Complete_Blood_Count_CBC_TRANSFORMED.csv")
 else:
     render_privacy(observations, load_outbox(), on_queue=lambda: queue_latest_summary(observations), on_deliver=mark_outbox_delivered)
